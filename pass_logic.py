@@ -397,3 +397,49 @@ def desencriptar(clave_encriptada, lista_encriptacion):
     return clave_original
 
 enlistar = lambda cadena: [int(x) for x in cadena.split("|") if x!=""]
+
+def main():
+    while True:
+        try:
+            user, contraseña = login()
+
+            contraseña, lista = ingresar_contraseña()
+            if contraseña:
+                print(contraseña)
+
+            contraseña1= crear_contraseña()
+
+            print(encriptar(contraseña1))
+
+            candena_desen = desencriptar(contraseña,enlistar(lista))
+
+            print(candena_desen)
+
+            break
+
+        except ContraseñaInvalidaError as e:
+            log_event("weak_password", "WARN", str(e), usuario=user, funcion="menu")
+            print(COLORES["alerta"], str(e), COLORES["reset"])
+        except CuentaNoEncontradaError as e:
+            log_event("account_not_found", "WARN", str(e), usuario=user, funcion="menu")
+            print(COLORES["error"], str(e), COLORES["reset"])
+        except EntradaInvalidaError as e:
+            log_event("invalid_input", "WARN", str(e), usuario=user, funcion="menu")
+            print(COLORES["alerta"], str(e), COLORES["reset"])
+        except CredencialesInvalidasError as e:
+            log_event("admin_password_incorrect", "WARN", str(e), usuario=user, funcion="mostrar")
+            print(COLORES["error"], str(e), COLORES["reset"])
+        except UsuarioNoExisteError as e:
+            log_event("login_user_not_found", "WARN", str(e), usuario=user, funcion="mostrar")
+            print(COLORES["error"], str(e), COLORES["reset"])
+        except ArchivoNoAccesibleError as e:
+            log_event("io_error", "ERROR", str(e), usuario=user, funcion="*")
+            print(COLORES["error"], str(e), COLORES["reset"])
+        except Exception as e:
+            log_event("unespected_error", "ERROR", str(e), usuario=user, funcion="*")
+            print(COLORES["error"], f"Error inesperado: {e}", COLORES["reset"])
+
+
+
+if __name__ == "__main__": 
+    main()
