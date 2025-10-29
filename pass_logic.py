@@ -31,10 +31,22 @@ class ContraseñaInvalidaError(Exception):
 
 
 def log_event(evento, nivel="INFO", mensaje="", usuario="", funcion="", extra="", filename=None):
+    
+    """Registra un evento en el archivo CSV de logs.
+
+    Parámetros:
+        evento (str): Nombre o tipo de evento a registrar.
+        nivel (str, opcional): Nivel de gravedad ('INFO', 'WARN', 'ERROR'). Por defecto "INFO".
+        mensaje (str, opcional): Descripción del evento.
+        usuario (str, opcional): Usuario asociado al evento.
+        funcion (str, opcional): Nombre de la función donde ocurrió el evento.
+        extra (str, opcional): Información adicional.
+        filename (str, opcional): Ruta del archivo CSV de log. Por defecto 'eventos_log.csv'.
+
+    - Si el archivo no existe, se crea con encabezado.
+    - No interrumpe la ejecución en caso de error de escritura.
     """
-    Registramos eventos en nuestro .csv
-    Columnas: fecha_iso;nivel;evento;usuario;funcion;mensaje;extra
-    """
+    
     if filename is None:
         filename = "eventos_log.csv"  
 
@@ -85,9 +97,24 @@ COLORES = {
 limpiar_pantalla = lambda: os.system("cls") if platform.system()=="Windows" else os.system("clear")
 
 
-def login():
-    """Solicitamos al usuario ingresar usuario y contraseña del administrador"""
+def login():    
+    """
+    Inicia sesión o crea un nuevo usuario administrador.
 
+    Funcionamiento:
+        - Solicita el nombre de usuario.
+        - Si existe, valida la contraseña (con 3 intentos).
+        - Si no existe, ofrece crear una nueva cuenta con validación de contraseña.
+
+    Returns:
+        tupla: (usuario, contraseña)
+
+    Raises:
+        UsuarioNoExisteError: Si el usuario no existe y elige no crear cuenta.
+        CredencialesInvalidasError: Si falla la validación o se exceden intentos.
+        ArchivoNoAccesibleError: Si no se puede crear el archivo del nuevo usuario.
+    """
+    
     print(COLORES["bright"] + "\n══════════════ LOGIN ══════════════" + COLORES["reset"])
 
     while True:
@@ -100,7 +127,7 @@ def login():
     try:
         with open(archivo_usuario, mode="rt", encoding="utf-8") as archivo:
             contraseña_archivada= archivo.readline().strip()
-
+            #Intentamos desencriptar si tiene formato encriptado.
             if ";" in contraseña_archivada:
                 try:
                     enc, lista = contraseña_archivada.split(";", 1)
@@ -110,7 +137,8 @@ def login():
                    
             else:
                 contraseña_guardada= contraseña_archivada
-
+                
+            #Hasta 3 intentos de ingreso
             intentos=3
 
             while intentos>0:
@@ -130,7 +158,8 @@ def login():
 
         
     except OSError:
-
+        
+        #Usuario no encontrado -> ofrece crearlo
         print(COLORES["alerta"] + f"⚠ El usuario '{user}' no existe." + COLORES["reset"])
         respuesta = input("Queres crear un nuevo usuario? (s/n): ").lower()
         
@@ -175,9 +204,15 @@ def login():
 
     
 def crear_contraseña(largo_contraseña = 20):
-    """Generamos una contraseña aleatoria de 20 caracteres que cumpla con: al menos una letra mayúscula, al menos una letra minúscula, 
-    al menos un número, y al menos un carácter especial"""
+    """
+    Genera una contraseña aleatoria cumpliendo los requisitos mínimos de seguridad.
 
+    Parámetros:
+        largo_contraseña: Longitud deseada. Por omisión 20.
+
+    Returns:
+        str: Contraseña generada aleatoriamente.
+    """
     contraseña=[]
     for i in range(largo_contraseña):
         buscar_lista = random.randint(0,3)
@@ -196,10 +231,19 @@ def crear_contraseña(largo_contraseña = 20):
 
 def validar(contraseña, largo_min=12):
     """
-    Valida que la contraseña cumpla con todos los requisitos mínimos.
-    Si falta alguno, levanta ContraseñaInvalidaError con detalles.
-    Si pasa, calcula y muestra el nivel de robustez: Débil / Intermedia / Fuerte.
+    Verifica que la contraseña cumpla con los requisitos mínimos de seguridad.
+
+    Parámetros:
+        contraseña: Contraseña a validar.
+        largo_min: Longitud mínima requerida (por omisión 12).
+
+    Returns:
+        bool: True si cumple con todos los criterios.
+
+    Raises:
+        ContraseñaInvalidaError: Si falta algún requisito.
     """
+    
     # ---- 1. Validaciones básicas ----
     requisitos_faltantes = []
 
@@ -267,11 +311,17 @@ def validar(contraseña, largo_min=12):
         nivel = COLORES["ok"] + "FUERTE" + COLORES["reset"]
 
     print(f"Tu contraseña tiene un nivel de seguridad: {nivel}")
+    #Devuelve True si pasa todas las validaciones
     return True
 
 
 def ingresar_contraseña():
-    """Le pedimos al usuario que ingrese su contraseña o que cree una contraseña aleatoria más segura"""
+    """
+    Permite al usuario ingresar manualmente una contraseña o generar una aleatoria.
+
+    Returns:
+        tupla: (contraseña_encriptada, lista_encriptacion)
+    """
     while True:
         while True:
             try:
@@ -288,8 +338,6 @@ def ingresar_contraseña():
             print("Va ingresar su propia contraseña. Tenga en cuenta que la misma debe tener como mínimo:")
             print(" 12 caracteres✅\n Una letra mayúscula✅\n Una letra minúscula✅\n Un número✅\n Un caracter especial.✅\n")
             contraseña = input("Ingrese la contraseña que quiere para esta app: ")
-            
-            #if validar(contraseña) == True:
             
             if validar(contraseña):       # <--- Levanta ContraseñaInvalidaError
                 contraseña_encriptada, lista_encriptacion = encriptar(contraseña)
@@ -311,12 +359,23 @@ def ingresar_contraseña():
 
     
 def encriptar(clave_original):
+    """
+    Encripta una clave generando una contraseña aleatoria del mismo largo y una lista de desplazamientos.
+
+    Args:
+        clave_original: Contraseña original en texto plano.
+
+    Returns:
+        tupla: (clave_encriptada, cadena_encriptacion)
+    """
     largo_clave_original= len(clave_original)
     clave_encriptada = crear_contraseña(largo_clave_original)
     
     lista_encriptacion = []
     
     for i in range(0,largo_clave_original):
+        
+        # Grupo y posición del carácter original
         caracter = clave_original[i]
         for j in range(0,4):
             if caracter in letras_mayusculas:
@@ -332,7 +391,7 @@ def encriptar(clave_original):
                 tupla_original = 3
                 posicion_original = caracteres_especiales.index(caracter)
                 
-                
+         # Grupo y posición del carácter "encriptado"               
         caracter = clave_encriptada[i]
         for j in range(0,4):
             if caracter in letras_mayusculas:
@@ -348,6 +407,8 @@ def encriptar(clave_original):
                 tupla_encriptada = 3
                 posicion_encriptada = caracteres_especiales.index(caracter)
                 
+        
+         # Guardamos las diferencias intercalando el separador '|'
         lista_encriptacion.append(tupla_encriptada-tupla_original)
         lista_encriptacion.append("|")
         lista_encriptacion.append(posicion_encriptada - posicion_original)
@@ -359,6 +420,17 @@ def encriptar(clave_original):
     
   
 def desencriptar(clave_encriptada, lista_encriptacion):
+    """
+    Desencripta una clave usando la lista de encriptación generada previamente.
+
+    Parámetros:
+        clave_encriptada: Contraseña encriptada.
+        lista_encriptacion: Lista de encriptación (algortimo utilizado) generada al encriptar.
+
+    Returns:
+        str: Contraseña original.
+    """
+    
     largo_clave_encriptada= len(clave_encriptada)
     clave_original = []
     
@@ -396,4 +468,80 @@ def desencriptar(clave_encriptada, lista_encriptacion):
     clave_original = "".join(clave_original)
     return clave_original
 
+# Convierte '1|2|3|' → [1,2,3]
 enlistar = lambda cadena: [int(x) for x in cadena.split("|") if x!=""]
+
+def main():
+    """
+    Punto de entrada principal del programa.
+
+    Funcioamiento:
+        1. Solicita inicio de sesión mediante `login()`.
+        2. Permite al usuario ingresar o generar una contraseña con `ingresar_contraseña()`.
+        3. Crea una nueva contraseña aleatoria para pruebas con `crear_contraseña()`.
+        4. Muestra ejemplos de encriptación y desencriptación de contraseñas.
+        5. Registra en logs los errores o eventos significativos.
+
+    Comportamiento:
+        - Si todo el proceso se realiza correctamente, se muestra la contraseña desencriptada.
+        - En caso de error, se registran los detalles mediante `log_event()` y se informa al usuario por consola.
+
+    Excepciones controladas:
+        - ContraseñaInvalidaError: Si la contraseña ingresada no cumple los requisitos mínimos.
+        - CuentaNoEncontradaError: Si la cuenta solicitada no existe.
+        - EntradaInvalidaError: Si el usuario ingresa un dato con formato incorrecto.
+        - CredencialesInvalidasError: Si la validación del usuario o contraseña falla.
+        - UsuarioNoExisteError: Si el usuario no existe y decide no crearlo.
+        - ArchivoNoAccesibleError: Si ocurre un error al leer o escribir archivos.
+        - Exception: Cualquier otro error no previsto.
+
+    Comentario:
+        Esta función se ejecuta automáticamente al iniciar el script mediante:
+            if __name__ == "__main__":
+                main()
+    """
+    while True:
+        try:
+            user, contraseña = login()
+
+            contraseña, lista = ingresar_contraseña()
+            if contraseña:
+                print(contraseña)
+
+            contraseña1= crear_contraseña()
+
+            print(encriptar(contraseña1))
+
+            # Para desencriptar la anterior (contraseña_enc), necesitamos la lista como ints
+            candena_desen = desencriptar(contraseña,enlistar(lista))
+
+            print(candena_desen)
+
+            break
+
+        except ContraseñaInvalidaError as e:
+            log_event("weak_password", "WARN", str(e), usuario=user, funcion="menu")
+            print(COLORES["alerta"], str(e), COLORES["reset"])
+        except CuentaNoEncontradaError as e:
+            log_event("account_not_found", "WARN", str(e), usuario=user, funcion="menu")
+            print(COLORES["error"], str(e), COLORES["reset"])
+        except EntradaInvalidaError as e:
+            log_event("invalid_input", "WARN", str(e), usuario=user, funcion="menu")
+            print(COLORES["alerta"], str(e), COLORES["reset"])
+        except CredencialesInvalidasError as e:
+            log_event("admin_password_incorrect", "WARN", str(e), usuario=user, funcion="mostrar")
+            print(COLORES["error"], str(e), COLORES["reset"])
+        except UsuarioNoExisteError as e:
+            log_event("login_user_not_found", "WARN", str(e), usuario=user, funcion="mostrar")
+            print(COLORES["error"], str(e), COLORES["reset"])
+        except ArchivoNoAccesibleError as e:
+            log_event("io_error", "ERROR", str(e), usuario=user, funcion="*")
+            print(COLORES["error"], str(e), COLORES["reset"])
+        except Exception as e:
+            log_event("unespected_error", "ERROR", str(e), usuario=user, funcion="*")
+            print(COLORES["error"], f"Error inesperado: {e}", COLORES["reset"])
+
+
+
+if __name__ == "__main__": 
+    main()
