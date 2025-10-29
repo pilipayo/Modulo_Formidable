@@ -2,7 +2,7 @@ import random
 import os
 import platform
 from datetime import datetime
-from colorama import Fore, Style, init
+from colorama import Fore, Style, init #instalar colorama en la terminal con python3 install colorama 
 init()
 
 # ==== Excepciones personalizadas ====
@@ -475,7 +475,7 @@ def main():
     """
     Punto de entrada principal del programa.
 
-    Funcioamiento:
+    Funcionamiento:
         1. Solicita inicio de sesión mediante `login()`.
         2. Permite al usuario ingresar o generar una contraseña con `ingresar_contraseña()`.
         3. Crea una nueva contraseña aleatoria para pruebas con `crear_contraseña()`.
